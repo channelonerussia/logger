@@ -14,7 +14,7 @@ type Env struct {
 }
 
 type Params struct {
-	Env      Env
+	Env      
 	Path     string
 	FileName string
 }
@@ -25,3 +25,11 @@ type Params struct {
 Дефолтный уровень логирования для окружения Prod = slog.LevelWarn. Если будет необходимо 
 поменять уровень логирования, то можно это сделать, через добавление, например, Env.Custom и 
 расширения параметров.
+
+### DefaultLocal() (*slog.Logger, error)
+
+Возвращает логер сконфигурированный по дефолту для локала
+
+### DefaultProd() (*slog.Logger, error)
+
+Возвращает логер сконфигурированный по дефолту для прода т.е. с Path = "./logs" и FileName = "logs.json"

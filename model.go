@@ -13,7 +13,7 @@ type Env struct {
 // Path Путь до директории в которой хранить логи. Дефолт = "./logs".
 // FileName Имя файла в который необходимо писать логи в prod. Дефолт = "logs.json".
 type Params struct {
-	Env      Env
+	Env
 	Path     string
 	FileName string
 }

@@ -4,6 +4,7 @@
 package logger
 
 import (
+	"errors"
 	"log/slog"
 	"os"
 )
@@ -13,9 +14,32 @@ const (
 	defaultFileName = "logs.json"
 )
 
+// DefaultLocal возвращает логер с дефолтной конфигурацией для локала
+func DefaultLocal() (*slog.Logger, error) {
+	return New(&Params{
+		Env: Env{
+			Local: true,
+		},
+	})
+}
+
+// DefaultProd возвращает логер с дефолтной конфигурацией для прода, т.е. с Path = "./logs" и
+// FileName = "logs.json"
+func DefaultProd() (*slog.Logger, error) {
+	return New(&Params{
+		Env: Env{
+			Prod: true,
+		},
+	})
+}
+
 // New принимает *Params и возвращает либо сконфигурированный под необходимое окружение логер
 // или ошибку.
 func New(params *Params) (*slog.Logger, error) {
+
+	if params.Env.Local && params.Env.Prod {
+		return nil, errors.New("choose only one environment")
+	}
 
 	if params.Env.Local {
 		return localLogger(), nil
