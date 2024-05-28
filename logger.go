@@ -7,6 +7,8 @@ import (
 	"errors"
 	"log/slog"
 	"os"
+	"strconv"
+	"time"
 )
 
 const (
@@ -57,40 +59,27 @@ func localLogger() *slog.Logger {
 }
 
 func prodLogger(params *Params) (*slog.Logger, error) {
-	if mkDirErr := os.MkdirAll(dirName(params.Path), os.ModePerm); mkDirErr != nil {
-		return nil, mkDirErr
-	}
-
-	logsFile, crFileErr := os.Create(fileName(params.FileName))
-
-	if crFileErr != nil {
+	logsFile, crFileErr := os.OpenFile(fileName(params.FileName), os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0666)
+	if crFileErr != nil && !os.IsExist(crFileErr) {
 		return nil, crFileErr
 	}
 
-	if setFilePermErr := logsFile.Chmod(os.ModePerm); setFilePermErr != nil {
-		return nil, setFilePermErr
-	}
+	var closeErr error
+	defer func() {
+		closeErr = logsFile.Close()
+	}()
 
 	return slog.New(
 		slog.NewJSONHandler(
 			logsFile,
 			&slog.HandlerOptions{Level: slog.LevelWarn},
 		),
-	), nil
-}
-
-func dirName(path string) (dn string) {
-	if path == "" {
-		dn = defaultFolder
-	} else {
-		dn = path
-	}
-	return
+	), closeErr
 }
 
 func fileName(name string) (fn string) {
 	if name == "" {
-		fn = defaultFileName
+		fn = defaultFolder + "/" + strconv.Itoa(int(time.Now().Unix())) + "_" + defaultFileName
 	} else {
 		fn = name
 	}
