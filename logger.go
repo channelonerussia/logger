@@ -18,16 +18,18 @@ const (
 
 // DefaultLocal возвращает логер с дефолтной конфигурацией для локала
 func DefaultLocal() (*slog.Logger, error) {
-	return New(&Params{
+	logger, _, err := New(&Params{
 		Env: Env{
 			Local: true,
 		},
 	})
+
+	return logger, err
 }
 
 // DefaultProd возвращает логер с дефолтной конфигурацией для прода, т.е. с Path = "./logs" и
 // FileName = "logs.json"
-func DefaultProd() (*slog.Logger, error) {
+func DefaultProd() (*slog.Logger, *os.File, error) {
 	return New(&Params{
 		Env: Env{
 			Prod: true,
@@ -37,14 +39,14 @@ func DefaultProd() (*slog.Logger, error) {
 
 // New принимает *Params и возвращает либо сконфигурированный под необходимое окружение логер
 // или ошибку.
-func New(params *Params) (*slog.Logger, error) {
+func New(params *Params) (*slog.Logger, *os.File, error) {
 
 	if params.Env.Local && params.Env.Prod {
-		return nil, errors.New("choose only one environment")
+		return nil, nil, errors.New("choose only one environment")
 	}
 
 	if params.Env.Local {
-		return localLogger(), nil
+		return localLogger(), nil, nil
 	}
 
 	return prodLogger(params)
@@ -58,29 +60,23 @@ func localLogger() *slog.Logger {
 		))
 }
 
-func prodLogger(params *Params) (*slog.Logger, error) {
+func prodLogger(params *Params) (*slog.Logger, *os.File, error) {
 	logsFolder := dirName(params.Path)
 
 	if mkDirErr := os.MkdirAll(logsFolder, os.ModePerm); mkDirErr != nil {
-		return nil, mkDirErr
+		return nil, nil, mkDirErr
 	}
 
 	logFilePath := fileName(logsFolder, params.FileName)
 
 	logsFile, crFileErr := os.OpenFile(logFilePath, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0666)
 	if crFileErr != nil {
-		return nil, crFileErr
+		return nil, nil, crFileErr
 	}
 
 	logger := slog.New(slog.NewJSONHandler(logsFile, &slog.HandlerOptions{Level: slog.LevelWarn}))
 
-	defer func() {
-		if err := logsFile.Close(); err != nil {
-			logger.Error("Failed to close log file", slog.String("error", err.Error()))
-		}
-	}()
-
-	return logger, nil
+	return logger, logsFile, nil
 }
 
 func dirName(path string) (dn string) {
