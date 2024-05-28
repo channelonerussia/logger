@@ -59,6 +59,10 @@ func localLogger() *slog.Logger {
 }
 
 func prodLogger(params *Params) (*slog.Logger, error) {
+	if mkDirErr := os.MkdirAll(defaultFolder, os.ModePerm); mkDirErr != nil {
+		return nil, mkDirErr
+	}
+
 	logsFile, crFileErr := os.OpenFile(fileName(params.FileName), os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0666)
 	if crFileErr != nil && !os.IsExist(crFileErr) {
 		return nil, crFileErr
