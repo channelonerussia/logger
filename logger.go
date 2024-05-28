@@ -59,33 +59,46 @@ func localLogger() *slog.Logger {
 }
 
 func prodLogger(params *Params) (*slog.Logger, error) {
-	if mkDirErr := os.MkdirAll(defaultFolder, os.ModePerm); mkDirErr != nil {
+	logsFolder := dirName(params.Path)
+
+	if mkDirErr := os.MkdirAll(logsFolder, os.ModePerm); mkDirErr != nil {
 		return nil, mkDirErr
 	}
 
-	logsFile, crFileErr := os.OpenFile(fileName(params.FileName), os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0666)
-	if crFileErr != nil && !os.IsExist(crFileErr) {
+	logFilePath := fileName(logsFolder, params.FileName)
+
+	logsFile, crFileErr := os.OpenFile(logFilePath, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0666)
+	if crFileErr != nil {
 		return nil, crFileErr
 	}
 
-	var closeErr error
+	logger := slog.New(slog.NewJSONHandler(logsFile, &slog.HandlerOptions{Level: slog.LevelWarn}))
+
 	defer func() {
-		closeErr = logsFile.Close()
+		if err := logsFile.Close(); err != nil {
+			logger.Error("Failed to close log file", slog.String("error", err.Error()))
+		}
 	}()
 
-	return slog.New(
-		slog.NewJSONHandler(
-			logsFile,
-			&slog.HandlerOptions{Level: slog.LevelWarn},
-		),
-	), closeErr
+	return logger, nil
 }
 
-func fileName(name string) (fn string) {
-	if name == "" {
-		fn = defaultFolder + "/" + strconv.Itoa(int(time.Now().Unix())) + "_" + defaultFileName
+func dirName(path string) (dn string) {
+	if path == "" {
+		dn = defaultFolder
 	} else {
-		fn = name
+		dn = path
+	}
+	return
+}
+
+func fileName(logsFolder string, filename string) (fn string) {
+	path := logsFolder + "/" + strconv.Itoa(int(time.Now().Unix())) + "_"
+
+	if filename == "" {
+		fn = path + defaultFileName
+	} else {
+		fn = path + filename
 	}
 	return
 }
